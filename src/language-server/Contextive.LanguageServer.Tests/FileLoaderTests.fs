@@ -4,6 +4,7 @@ open Expecto
 open Contextive.LanguageServer
 open Swensen.Unquote
 open System.IO
+open System.Threading.Tasks
 
 [<Tests>]
 let fileLoaderTests =
@@ -11,34 +12,34 @@ let fileLoaderTests =
         "LanguageServer.File Loader Tests"
         [
 
-          testAsync "Path is in error state" {
-              let pathGetter () = async.Return <| Error("No path")
+          testTask "Path is in error state" {
+              let pathGetter () = Task.FromResult(Error("No path"))
               let! file = (FileLoader.loader pathGetter) ()
               test <@ file = Error("No path") @>
           }
 
-          testAsync "Path Doesn't exist" {
+          testTask "Path Doesn't exist" {
               let path = "/file/not/found"
-              let pathGetter () = async.Return <| Ok(path)
+              let pathGetter () = Task.FromResult(Ok(path))
               let! file = (FileLoader.loader pathGetter) ()
 
               match file with
               | Error(e) -> failtest e
-              | Ok(f) ->
+              | Ok(f: Contextive.Core.File.File) ->
                   test <@ f.AbsolutePath = path @>
                   test <@ f.Contents = Error("Definitions file not found.") @>
           }
 
-          testAsync "Path exists" {
+          testTask "Path exists" {
               let path =
                   Path.Combine(Directory.GetCurrentDirectory(), "fixtures/completion_tests/two.yml")
 
-              let pathGetter () = async.Return <| Ok(path)
+              let pathGetter () = Task.FromResult(Ok(path))
               let! file = (FileLoader.loader pathGetter) ()
 
               match file with
               | Error(e) -> failtest e
-              | Ok(f) ->
+              | Ok(f: Contextive.Core.File.File) ->
                   test <@ f.AbsolutePath = path @>
 
                   test

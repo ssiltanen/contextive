@@ -76,7 +76,7 @@ let private hoverContentForToken
     (termFinder: Definitions.Finder)
     (tokensAndCandidateTerms: CandidateTerms.TokenAndCandidateTerms seq)
     =
-    async {
+    task {
         let! findResult = termFinder uri (Filtering.termFilterForCandidateTerms tokensAndCandidateTerms)
 
         return
@@ -93,16 +93,12 @@ let handler
     (_: HoverCapability)
     _
     =
-    async {
-        return!
-            match TextDocument.getTokenAtPosition p tokenFinder with
-            | None -> async { return Lsp.noHoverResult }
-            | tokenAtPosition ->
-                tokenAtPosition
-                |> CandidateTerms.tokenToTokenAndCandidateTerms
-                |> hoverContentForToken (p.TextDocument.Uri.ToString()) termFinder
-    }
-    |> Async.StartAsTask
+    match TextDocument.getTokenAtPosition p tokenFinder with
+    | None -> task { return Lsp.noHoverResult }
+    | tokenAtPosition ->
+        tokenAtPosition
+        |> CandidateTerms.tokenToTokenAndCandidateTerms
+        |> hoverContentForToken (p.TextDocument.Uri.ToString()) termFinder
 
 let private registrationOptionsProvider (hc: HoverCapability) (cc: ClientCapabilities) = HoverRegistrationOptions()
 

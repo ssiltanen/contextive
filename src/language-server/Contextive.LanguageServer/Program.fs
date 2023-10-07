@@ -3,6 +3,7 @@ module Contextive.LanguageServer.Program
 open Contextive.LanguageServer.Server
 open Serilog
 open System
+open System.Threading.Tasks
 
 let setupLogging =
 #if DEBUG
@@ -20,14 +21,14 @@ let private startWithConsole =
     setupAndStartLanguageServer (Console.OpenStandardInput()) (Console.OpenStandardOutput())
 
 let startAndWaitForExit =
-    async {
+    task {
         let! server = startWithConsole
-        do! server.WaitForExit |> Async.AwaitTask
+        do! server.WaitForExit
         Log.Logger.Information "Server exited."
     }
 
 [<EntryPoint>]
 let main argv =
     setupLogging
-    startAndWaitForExit |> Async.RunSynchronously
+    startAndWaitForExit |> Async.AwaitTask |> Async.RunSynchronously
     0 // return an integer exit code

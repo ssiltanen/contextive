@@ -5,6 +5,7 @@ open YamlDotNet.Serialization.NamingConventions
 open System.Linq
 
 open Humanizer
+open System.Threading.Tasks
 
 [<CLIMutable>]
 type Term =
@@ -73,7 +74,7 @@ module Definitions =
 
 type FindResult = Context seq
 type Filter = FindResult -> FindResult
-type Finder = string -> Filter -> Async<FindResult>
+type Finder = string -> Filter -> Task<FindResult>
 
 let private replaceNullsWithEmptyLists (definitions: Definitions) =
     { definitions with

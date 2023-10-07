@@ -54,7 +54,7 @@ let textDocumentTests =
                   [ Workspace.optionsBuilder <| Path.Combine("fixtures", "completion_tests")
                     ConfigurationSection.contextivePathOptionsBuilder $"one.yml" ]
 
-              use! client = TestClient(config) |> init
+              use! client = TestClient(config) |> init |> Async.AwaitTask
               test <@ client.ServerSettings.Capabilities.TextDocumentSync.Options.Change = TextDocumentSyncKind.Full @>
           }
 

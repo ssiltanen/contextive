@@ -1,6 +1,7 @@
 module Contextive.LanguageServer.Tests.Helpers.Definitions
 
 open Contextive.Core.Definitions
+open System.Threading.Tasks
 
 let termNamesToTerms (terms: string list) =
     terms |> Seq.map (fun t -> { Term.Default with Name = t })
@@ -12,7 +13,7 @@ let allContextsWithTermNames (termNames: string list) (contexts: Context seq) =
     allContextsWithTerms (termNamesToTerms termNames) contexts
 
 let mockMultiContextDefinitionsFinder (contexts: Context seq) (terms: Term seq) =
-    (fun _ f -> async { return allContextsWithTerms terms contexts |> f })
+    (fun _ f -> allContextsWithTerms terms contexts |> f |> Task.FromResult)
 
 let mockDefinitionsFinder (contexts: Context) (terms: Term seq) =
     mockMultiContextDefinitionsFinder (seq { contexts }) terms

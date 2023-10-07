@@ -17,9 +17,9 @@ let completionTests =
     <| testList
         "LanguageServer.Completion Tests"
         [ testAsync "Given no contextive respond with empty completion list " {
-              use! client = SimpleTestClient |> init
+              use! client = SimpleTestClient |> init |> Async.AwaitTask
 
-              let! labels = Completion.getCompletionLabels client
+              let! labels = Completion.getCompletionLabels client |> Async.AwaitTask
 
               test <@ Seq.length labels = 0 @>
           }
@@ -32,11 +32,14 @@ let completionTests =
                       [ Workspace.optionsBuilder <| Path.Combine("fixtures", "completion_tests")
                         ConfigurationSection.contextivePathOptionsBuilder $"{fileName}.yml" ]
 
-                  use! client = TestClient(config) |> init
+                  use! client = TestClient(config) |> init |> Async.AwaitTask
 
                   let textDocumentUri = $"file:///{System.Guid.NewGuid().ToString()}"
 
-                  let! result = client |> Completion.getCompletionFromText text textDocumentUri position
+                  let! result =
+                      client
+                      |> Completion.getCompletionFromText text textDocumentUri position
+                      |> Async.AwaitTask
 
                   test <@ result.IsIncomplete @>
 

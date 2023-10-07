@@ -20,7 +20,7 @@ let hoverTests =
         [
 
           testAsync "Given no definitions and no document sync, server response to hover request with empty result" {
-              use! client = SimpleTestClient |> init
+              use! client = SimpleTestClient |> init |> Async.AwaitTask
 
               let hoverParams = HoverParams()
 
@@ -39,7 +39,7 @@ let hoverTests =
                       [ Workspace.optionsBuilder <| Path.Combine("fixtures", "completion_tests")
                         ConfigurationSection.contextivePathOptionsBuilder $"{fileName}.yml" ]
 
-                  use! client = TestClient(config) |> init
+                  use! client = TestClient(config) |> init |> Async.AwaitTask
 
                   let textDocumentUri = $"file:///{System.Guid.NewGuid().ToString()}"
 
@@ -91,7 +91,7 @@ let hoverTests =
                       [ Workspace.optionsBuilder <| Path.Combine("fixtures", "completion_tests")
                         ConfigurationSection.contextivePathOptionsBuilder $"{fileName}.yml" ]
 
-                  use! client = TestClient(config) |> init
+                  use! client = TestClient(config) |> init |> Async.AwaitTask
 
                   let textDocumentUri = $"file:///{System.Guid.NewGuid().ToString()}"
 
@@ -131,7 +131,7 @@ let hoverTests =
                       [ Workspace.optionsBuilder <| Path.Combine("fixtures", "completion_tests")
                         ConfigurationSection.contextivePathOptionsBuilder $"{fileName}.yml" ]
 
-                  use! client = TestClient(config) |> init
+                  use! client = TestClient(config) |> init |> Async.AwaitTask
 
                   let textDocumentUri = $"file:///{System.Guid.NewGuid().ToString()}"
 

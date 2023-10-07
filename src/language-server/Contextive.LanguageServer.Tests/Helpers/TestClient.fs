@@ -1,6 +1,7 @@
 module Contextive.LanguageServer.Tests.Helpers.TestClient
 
 open System
+open System.Threading.Tasks
 open System.IO.Pipelines
 open OmniSharp.Extensions.LanguageProtocol.Testing
 open OmniSharp.Extensions.LanguageServer.Client
@@ -22,8 +23,7 @@ type private TestClient() =
         let serverPipe = Pipe()
 
         setupAndStartLanguageServer (serverPipe.Reader.AsStream()) (clientPipe.Writer.AsStream())
-        |> Async.Ignore
-        |> Async.Start
+        |> ignore
 
         (clientPipe.Reader.AsStream(), serverPipe.Writer.AsStream())
 
@@ -33,16 +33,16 @@ type private TestClient() =
         | _ -> base.InitializeClient(null)
 
 let private createTestClient clientOptsBuilder =
-    async {
+    task {
         let testClient = new TestClient()
 
-        let! client = testClient.Initialize(clientOptsBuilder) |> Async.AwaitTask
+        let! client = testClient.Initialize(clientOptsBuilder)
 
         return client, None
     }
 
 let private initAndWaitForConfigLoaded testClientConfig (loadMessage: string option) =
-    async {
+    task {
         let logAwaiter = ConditionAwaiter.create ()
 
         let allBuilders = ServerLog.optionsBuilder logAwaiter :: testClientConfig
@@ -59,17 +59,14 @@ let private initAndWaitForConfigLoaded testClientConfig (loadMessage: string opt
     }
 
 let initWithReply initOptions =
-    async {
-        return!
-            match initOptions with
-            | SimpleTestClient -> createTestClient None
-            | TestClient(testClientConfig) -> initAndWaitForConfigLoaded testClientConfig None
-            | TestClientWithCustomInitWait(testClientConfig, loadMessage) ->
-                initAndWaitForConfigLoaded testClientConfig loadMessage
-    }
+    match initOptions with
+    | SimpleTestClient -> createTestClient None
+    | TestClient(testClientConfig) -> initAndWaitForConfigLoaded testClientConfig None
+    | TestClientWithCustomInitWait(testClientConfig, loadMessage) ->
+        initAndWaitForConfigLoaded testClientConfig loadMessage
 
 let init o =
-    async {
+    task {
         let! result = initWithReply o
         return fst result
     }

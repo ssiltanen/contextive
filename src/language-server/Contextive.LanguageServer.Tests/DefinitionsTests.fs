@@ -7,6 +7,7 @@ open Contextive.LanguageServer
 open Helpers.TestClient
 open Contextive.Core
 open Contextive.LanguageServer.Tests.Helpers
+open System.Threading.Tasks
 
 [<Tests>]
 let definitionsTests =
@@ -17,18 +18,16 @@ let definitionsTests =
           let getName (t: Definitions.Term) = t.Name
 
           let getDefinitionsWithErrorHandler onErrorAction configGetter workspaceFolder =
-              async {
-                  let definitions = Definitions.create ()
+              let definitions = Definitions.create ()
 
-                  let definitionsFileLoader =
-                      PathResolver.resolvePath workspaceFolder
-                      |> Configuration.resolvedPathGetter configGetter
-                      |> FileLoader.loader
+              let definitionsFileLoader =
+                  PathResolver.resolvePath workspaceFolder
+                  |> Configuration.resolvedPathGetter configGetter
+                  |> FileLoader.loader
 
-                  Definitions.init definitions (fun _ -> ()) definitionsFileLoader None onErrorAction
-                  (Definitions.loader definitions) ()
-                  return definitions
-              }
+              Definitions.init definitions (fun _ -> ()) definitionsFileLoader None onErrorAction
+              (Definitions.loader definitions) ()
+              definitions
 
           let getDefinitions = getDefinitionsWithErrorHandler (fun _ -> ())
 
@@ -37,11 +36,11 @@ let definitionsTests =
               |> Some
 
           let getTermsFromFileInContext termFileUri definitionsFileName =
-              async {
+              task {
                   let definitionsPath = getFileName definitionsFileName
                   let workspaceFolder = Some ""
-                  let configGetter = (fun _ -> async.Return definitionsPath)
-                  let! definitions = getDefinitions configGetter workspaceFolder
+                  let configGetter = (fun _ -> Task.FromResult definitionsPath)
+                  let definitions = getDefinitions configGetter workspaceFolder
                   let! contexts = Definitions.find definitions termFileUri id
                   return contexts |> Definitions.FindResult.allTerms
               }
@@ -51,13 +50,13 @@ let definitionsTests =
           let compareList = Seq.compareWith compare
 
           testAsync "Can load term Names" {
-              let! terms = getTermsFromFile "one"
+              let! terms = getTermsFromFile "one" |> Async.AwaitTask
               let foundNames = terms |> Seq.map getName
               test <@ (foundNames, Fixtures.One.expectedTerms) ||> compareList = 0 @>
           }
 
           testAsync "Can load term Definitions" {
-              let! terms = getTermsFromFile "one"
+              let! terms = getTermsFromFile "one" |> Async.AwaitTask
               let foundDefinitions = terms |> Seq.map (fun t -> t.Definition) |> Seq.choose id
 
               let expectedDefinitions =
@@ -69,7 +68,7 @@ let definitionsTests =
           }
 
           testAsync "Can load term UsageExamples" {
-              let! terms = getTermsFromFile "one"
+              let! terms = getTermsFromFile "one" |> Async.AwaitTask
 
               let foundDefinitions =
                   terms
@@ -87,7 +86,10 @@ let definitionsTests =
           }
 
           testAsync "Can load multi-context definitions" {
-              let! terms = getTermsFromFileInContext "/primary/secondary/test.txt" "multi" // Path contains both context's globs
+              let! terms =
+                  getTermsFromFileInContext "/primary/secondary/test.txt" "multi"
+                  |> Async.AwaitTask // Path contains both context's globs
+
               let foundNames = terms |> Seq.map getName
               test <@ (foundNames, seq [ "termInPrimary"; "termInSecondary" ]) ||> compareList = 0 @>
           }
@@ -96,7 +98,7 @@ let definitionsTests =
               let pathName = path.Replace(".", "_dot_")
 
               testAsync $"with path {pathName}, expecting {expectedTerms}" {
-                  let! terms = getTermsFromFileInContext path "multi"
+                  let! terms = getTermsFromFileInContext path "multi" |> Async.AwaitTask
                   let foundNames = terms |> Seq.map getName
                   test <@ (foundNames, seq expectedTerms) ||> compareList = 0 @>
               }
@@ -128,14 +130,16 @@ let definitionsTests =
                   let mutable path = getFileName fileName
 
                   let workspaceFolder = Some ""
-                  let configGetter = (fun _ -> async.Return path)
+                  let configGetter = (fun _ -> Task.FromResult path)
 
                   let errorMessageAwaiter = ConditionAwaiter.create ()
 
                   let onErrorLoading = fun msg -> ConditionAwaiter.received errorMessageAwaiter msg
 
-                  let! definitions = getDefinitionsWithErrorHandler onErrorLoading configGetter workspaceFolder
-                  let! termsWhenInvalid = Definitions.find definitions "" id
+                  let definitions =
+                      getDefinitionsWithErrorHandler onErrorLoading configGetter workspaceFolder
+
+                  let! termsWhenInvalid = Definitions.find definitions "" id |> Async.AwaitTask
 
                   let! errorMessage = ConditionAwaiter.waitForAny errorMessageAwaiter 500
                   test <@ errorMessage.Value = expectedErrorMessage @>
@@ -144,7 +148,7 @@ let definitionsTests =
                   path <- getFileName "one"
                   (Definitions.loader definitions) ()
 
-                  let! contexts = Definitions.find definitions "" id
+                  let! contexts = Definitions.find definitions "" id |> Async.AwaitTask
                   let foundNames = contexts |> Definitions.FindResult.allTerms |> Seq.map getName
 
                   test <@ (foundNames, Fixtures.One.expectedTerms) ||> compareList = 0 @>
@@ -165,21 +169,21 @@ let definitionsTests =
                       [ Workspace.optionsBuilder <| Path.Combine("fixtures", "completion_tests")
                         ConfigurationSection.contextivePathLoaderOptionsBuilder pathLoader ]
 
-                  use! client = TestClient(config) |> init
+                  use! client = TestClient(config) |> init |> Async.AwaitTask
 
-                  let! termsWhenValidAtStart = Completion.getCompletionLabels client
+                  let! termsWhenValidAtStart = Completion.getCompletionLabels client |> Async.AwaitTask
                   test <@ (termsWhenValidAtStart, Fixtures.One.expectedCompletionLabels) ||> compareList = 0 @>
 
                   path <- $"{fileName}.yml"
                   ConfigurationSection.didChange client path
 
-                  let! termsWhenInvalid = Completion.getCompletionLabels client
+                  let! termsWhenInvalid = Completion.getCompletionLabels client |> Async.AwaitTask
                   test <@ Seq.length termsWhenInvalid = 0 @>
 
                   path <- validPath
                   ConfigurationSection.didChange client path
 
-                  let! termsWhenValidAtEnd = Completion.getCompletionLabels client
+                  let! termsWhenValidAtEnd = Completion.getCompletionLabels client |> Async.AwaitTask
                   test <@ (termsWhenValidAtEnd, Fixtures.One.expectedCompletionLabels) ||> compareList = 0 @>
               }
 

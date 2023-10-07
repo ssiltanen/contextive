@@ -3,7 +3,7 @@ module Contextive.LanguageServer.Configuration
 open System.Threading.Tasks
 
 let resolvedPathGetter configGetter pathResolver () =
-    async {
+    task {
         let! path = configGetter ()
         return pathResolver path
     }

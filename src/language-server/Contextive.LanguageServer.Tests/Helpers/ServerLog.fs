@@ -12,7 +12,7 @@ let private createHandler logAwaiter (l: LogMessageParams) =
     Task.CompletedTask
 
 let waitForLogMessage logAwaiter (logMessage: string) =
-    async {
+    task {
         let logCondition = fun (m: string) -> m.Contains(logMessage)
 
         return! ConditionAwaiter.waitFor logAwaiter logCondition 25000

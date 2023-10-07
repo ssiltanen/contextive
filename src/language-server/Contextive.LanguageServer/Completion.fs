@@ -152,7 +152,7 @@ let handler
     (hc: CompletionCapability)
     _
     =
-    async {
+    task {
         let caseTemplate = getCaseTemplate tokenFinder (p.TextDocument) p.Position
 
         let getCompletionLabelDataWithCase =
@@ -164,7 +164,6 @@ let handler
 
         return findResult |> Seq.map getCompletionLabelDataWithCase |> toCompletionList
     }
-    |> Async.StartAsTask
 
 let private registrationOptionsProvider (hc: CompletionCapability) (cc: ClientCapabilities) =
     CompletionRegistrationOptions()

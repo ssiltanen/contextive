@@ -38,7 +38,7 @@ let watchedFileTests =
                     ConfigurationSection.contextivePathOptionsBuilder $"one.yml"
                     WatchedFiles.optionsBuilder registrationAwaiter ]
 
-              let! client = TestClient(config) |> init
+              let! client = TestClient(config) |> init |> Async.AwaitTask
 
               let! registrationMsg = ConditionAwaiter.waitForAny registrationAwaiter 500
 
@@ -64,7 +64,7 @@ let watchedFileTests =
                         ConfigurationSection.contextivePathLoaderOptionsBuilder pathLoader
                         WatchedFiles.optionsBuilder registrationAwaiter ]
 
-                  let! client = TestClient(config) |> init
+                  let! client = TestClient(config) |> init |> Async.AwaitTask
 
                   let! initialRegistrationMsg = ConditionAwaiter.waitForAny registrationAwaiter 500
 
@@ -114,7 +114,7 @@ let watchedFileTests =
                   [ Workspace.optionsBuilder relativePath
                     ConfigurationSection.contextivePathOptionsBuilder definitionsFile ]
 
-              let! client = TestClient(config) |> init
+              let! client = TestClient(config) |> init |> Async.AwaitTask
 
               let definitionsFileUri =
                   Path.Combine(Directory.GetCurrentDirectory(), relativePath, definitionsFile)
@@ -126,7 +126,7 @@ let watchedFileTests =
 
               didChangeWatchedFiles client definitionsFileUri
 
-              let! labelsWhileEmpty = Completion.getCompletionLabels client
+              let! labelsWhileEmpty = Completion.getCompletionLabels client |> Async.AwaitTask
 
               File.WriteAllText(
                   definitionsFileUri,
@@ -136,7 +136,7 @@ let watchedFileTests =
               )
 
               didChangeWatchedFiles client definitionsFileUri
-              let! labelsAfterDefinitionsAdded = Completion.getCompletionLabels client
+              let! labelsAfterDefinitionsAdded = Completion.getCompletionLabels client |> Async.AwaitTask
 
               File.Delete(definitionsFileUri)
 
@@ -154,7 +154,7 @@ let watchedFileTests =
                   [ Workspace.optionsBuilder relativePath
                     ConfigurationSection.contextivePathOptionsBuilder definitionsFile ]
 
-              let! client = TestClient(config) |> init
+              let! client = TestClient(config) |> init |> Async.AwaitTask
 
               let definitionsFileUri =
                   Path.Combine(Directory.GetCurrentDirectory(), relativePath, definitionsFile)
@@ -167,7 +167,7 @@ let watchedFileTests =
 
               didChangeWatchedFiles client definitionsFileUri
 
-              let! labels = Completion.getCompletionLabels client
+              let! labels = Completion.getCompletionLabels client |> Async.AwaitTask
 
               File.WriteAllText(definitionsFileUri, existingContents)
 

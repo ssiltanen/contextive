@@ -19,7 +19,7 @@ let private loadFromPath path =
 
 let loader pathGetter =
     fun () ->
-        async {
+        task {
             let! absolutePath = pathGetter ()
             return loadFromPath absolutePath
         }

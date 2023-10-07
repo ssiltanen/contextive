@@ -22,8 +22,16 @@ let version =
         .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
         .InformationalVersion
 
+let private getContextiveDir (workspaceFolder: string) =
+    let contextiveDir = Path.Combine(workspaceFolder, ".contextive")
+
+    if Directory.Exists(contextiveDir) then
+        Some contextiveDir
+    else
+        None
+
 let private getConfig (s: ILanguageServer) section key =
-    async {
+    task {
         Log.Logger.Information $"Getting {section} {key} config..."
 
         let! config =
@@ -53,7 +61,7 @@ let private getWorkspaceFolder (s: ILanguageServer) =
 
 let private onStartup definitions =
     OnLanguageServerStartedDelegate(fun (s: ILanguageServer) _cancellationToken ->
-        async {
+        task {
             s.Window.LogInfo $"Starting {name} v{version}..."
             let configGetter () = getConfig s configSection pathKey
             // Not sure if this is needed to ensure configuration is loaded, or allow a task/context switch
@@ -81,7 +89,6 @@ let private onStartup definitions =
             definitionsLoader ()
 
         }
-        |> Async.StartAsTask
         :> Task)
 
 
@@ -115,9 +122,9 @@ let private configureServer (input: Stream) (output: Stream) (opts: LanguageServ
 
 
 let setupAndStartLanguageServer (input: Stream) (output: Stream) =
-    async {
+    task {
         Log.Logger.Information "Starting server..."
-        let! server = configureServer input output |> LanguageServer.From |> Async.AwaitTask
+        let! server = configureServer input output |> LanguageServer.From
         Log.Logger.Information "Server started."
         return server
     }

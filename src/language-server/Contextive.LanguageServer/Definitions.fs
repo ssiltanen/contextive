@@ -4,8 +4,9 @@ open DotNet.Globbing
 
 open Contextive.Core.File
 open Contextive.Core.Definitions
+open System.Threading.Tasks
 
-type FileLoader = unit -> Async<Result<File, string>>
+type FileLoader = unit -> Task<Result<File, string>>
 
 type Reloader = unit -> unit
 type Unregisterer = unit -> unit
@@ -24,7 +25,7 @@ type private State =
         { WorkspaceFolder = None
           Logger = fun _ -> ()
           DefinitionsFilePath = None
-          FileLoader = fun _ -> async.Return <| Error("Path not yet defined.")
+          FileLoader = fun _ -> Task.FromResult(Error("Path not yet defined."))
           Definitions = Definitions.Default
           RegisterWatchedFile = None
           UnregisterLastWatchedFile = None
@@ -91,8 +92,8 @@ module private Handle =
                 DefinitionsFilePath = path }
         | _, _ -> state
 
-    let load (state: State) : Async<State> =
-        async {
+    let load (state: State) : Task<State> =
+        task {
             let! file = state.FileLoader()
 
             let defs = loadFile state file
@@ -136,27 +137,23 @@ module private Handle =
         let matchOpenFileUri = matchGlobs findMsg.OpenFileUri
 
         let foundContexts =
-            state.Definitions.Contexts
-            |> Seq.filter matchOpenFileUri
-            |> findMsg.Filter
+            state.Definitions.Contexts |> Seq.filter matchOpenFileUri |> findMsg.Filter
 
         findMsg.ReplyChannel.Reply foundContexts
         state
 
 let private handleMessage (state: State) (msg: Message) =
-    async {
-        return!
-            match msg with
-            | Init(initMsg) -> Handle.init state initMsg |> async.Return
-            | Load -> Handle.load state
-            | Find(findMsg) -> Handle.find state findMsg |> async.Return
-    }
+    match msg with
+    | Init(initMsg) -> Handle.init state initMsg |> Task.FromResult
+    | Load -> Handle.load state
+    | Find(findMsg) -> Handle.find state findMsg |> Task.FromResult
+
 
 
 let create () =
     MailboxProcessor.Start(fun inbox ->
         let rec loop (state: State) =
-            async {
+            task {
                 let! (msg: Message) = inbox.Receive()
 
                 let! newState =
@@ -165,12 +162,12 @@ let create () =
                     with e ->
                         printfn "%A" e
                         state.Logger <| e.ToString()
-                        async.Return state
+                        Task.FromResult state
 
                 return! loop newState
             }
 
-        loop <| State.Initial())
+        State.Initial() |> loop |> Async.AwaitTask)
 
 let init (definitionsManager: MailboxProcessor<Message>) logger fileLoader registerWatchedFile onErrorLoading =
     Init(
@@ -193,4 +190,4 @@ let find (definitionsManager: MailboxProcessor<Message>) (openFileUri: string) (
                   ReplyChannel = rc }
             )
 
-    definitionsManager.PostAndAsyncReply(msgBuilder, 1000)
+    definitionsManager.PostAndAsyncReply(msgBuilder, 1000) |> Async.StartAsTask
